@@ -1,0 +1,13 @@
+[server]
+host = "localhost"
+port = 3306
+
+[bin]
+# Path where mariadb executable is (may be different for other OS
+path_to_exe = "/usr/bin/mariadb"
+
+[database]
+# These are examples
+username = "root"
+password = "root"
+allow_local_infile = true
