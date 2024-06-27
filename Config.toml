@@ -1,13 +1,13 @@
-[server]
+[database]
+# Windows basic install where VERSION is your mariadb version
+# path_to_exe = "C:\\Program Files\\MariaDB VERSION\\bin\\mariadbd.exe";
+# Linux basic install path
+path_to_exe = "/usr/bin/mariadb/"
+
+# These are examples
 host = "localhost"
 port = 3306
-
-[bin]
-# Path where mariadb executable is (may be different for other OS
-path_to_exe = "/usr/bin/mariadb"
-
-[database]
-# These are examples
+database = "testDB"
 username = "root"
 password = "root"
 allow_local_infile = true
