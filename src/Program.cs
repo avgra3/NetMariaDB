@@ -1,66 +1,69 @@
 ﻿using CliWrap;
-using CliWrap.Buffered;
-using System;
 using System.Text;
-using Tomlyn;
-using Tomlyn.Model;
 
-// Getting our toml file loaded
-string toml = File.ReadAllText("Config.toml");
-var model = Toml.ToModel(toml);
+namespace MariaDBConnectors;
 
-// Database information
-Dictionary<string, object> databaseInformation = new Dictionary<string, object>();
-
-foreach (var kvp in ((TomlTable)model["database"]!).ToDictionary())
+public static class MariaDB
 {
-		string key = kvp.Key.ToString();
-		object value = kvp.Value;
-		databaseInformation.Add(key, value);
-}
+	public static async Task<Dictionary<string, object>> ExecuteCommand(Dictionary<string, object> databaseInformation, string sqlScript)
+	{
+		if (string.IsNullOrEmpty(databaseInformation["path_to_exe"].ToString()))
+		{
+			throw new ArgumentException("You did not specify a valid path to the MariaDB executable!") ;
+		}
 
-Console.WriteLine("Loaded Database Information....");
-foreach (var pair in databaseInformation)
-{
-		Console.WriteLine($"{pair.Key}: {pair.Value}");
-}
-
-Console.WriteLine("Test execute...");
-string sqlTest = "SELECT * FROM bills_bill;";
-ExecuteCommand(databaseInformation, sqlTest);
-
-// Executing a sql command 
-void ExecuteCommand(Dictionary<string, object> databaseInformation, string sqlScript)
-{
+		int verbosity;
+		
 		var stdOutBuffer = new StringBuilder();
 		var stdErrBuffer = new StringBuilder();
 
-		var cmd = Cli.Wrap(databaseInformation["path_to_exe"].ToString())
+		var cmd = await Cli.Wrap(databaseInformation["path_to_exe"].ToString())
 				.WithArguments(args =>
+				{
+					args.Add($"--host={databaseInformation["host"].ToString()}")
+						.Add($"--port={databaseInformation["port"]}")
+						.Add($"--user={databaseInformation["username"].ToString()}")
+						.Add($"--password={databaseInformation["password"].ToString()}")
+						// If database is not provided (needs to be empty string) we do not pass it to the command
+						.Add($"{(databaseInformation["database"].ToString() != "" ? "--database=" + databaseInformation["database"] : "")}")
+						.Add("--column-names")
+						.Add("--quick")
+						.Add($"--execute={sqlScript}");
+					
+					// How verbose?
+					if (int.TryParse(databaseInformation["verbosity"].ToString().Trim(), out verbosity) && !string.IsNullOrEmpty(databaseInformation["verbosity"].ToString()))
+					{
+						if (verbosity == 1)
 						{
-								args.Add($"--host={databaseInformation["host"].ToString()}")
-							.Add($"--port={databaseInformation["port"]}")
-							.Add($"--user={databaseInformation["username"].ToString()}")
-							.Add($"--password={databaseInformation["password"].ToString()}");
-
-								// Optional
-								if (databaseInformation["allow_local_infile"] is bool)
-										args.Add("--local-infile=ON");
-
-								args.Add($"--database={databaseInformation["database"]}")
-							.Add("--verbose")
-							.Add("--column-names")
-							.Add($"--execute").Add(sqlScript);
-						})
-		.WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
-			.WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
-		.ExecuteAsync();
+							args.Add("--verbose");
+						}
+						if (verbosity == 2)
+						{
+							args.Add("--verbose")
+								.Add("--verbose");
+						}
+					}
+					if (databaseInformation["allow_local_infile"] is bool)
+						args.Add("--local-infile=ON");						
+				})
+				.WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
+				.WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
+				.ExecuteAsync();
 
 		var stdOut = stdOutBuffer.ToString();
 		var stdErr = stdErrBuffer.ToString();
 
-		Console.WriteLine($"\nOutput of results:\n{stdOut}");
-		Console.WriteLine($"\nOutput of errors:\n{stdErr}");
+		Dictionary<string, object> results = new Dictionary<string, object>(7)
+        {
+            { "standardOut", stdOut },
+            { "standardError", stdErr },
+			{ "isSuccess", $"{cmd.IsSuccess}" },
+			{ "exitCode", $"{cmd.ExitCode}" },
+			{ "startTime", $"{cmd.StartTime}"},
+			{ "exitTime", $"{cmd.ExitTime}"},
+			{ "runTime", $"{cmd.RunTime}"}
+        };
 
+		return results;
+	}
 }
-

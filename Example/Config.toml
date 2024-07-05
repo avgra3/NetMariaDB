@@ -1,0 +1,16 @@
+[database]
+# Windows basic install where 10.6 is your mariadb version on Windows
+path_to_exe = "C:\\Program Files\\MariaDB 10.6\\bin\\mariadb.exe"
+#path_to_exe = ""
+# Linux basic install path
+# path_to_exe = "/usr/bin/mariadb/"
+
+# These are examples
+host = "localhost"
+port = 3306
+database = ""
+username = "root"
+password = "root"
+allow_local_infile = true
+# Options: 0 (No verbosity), 1 (medium verbosity), 2 (complete verbosity)
+verbosity = 2
